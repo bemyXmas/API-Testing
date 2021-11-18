@@ -1,8 +1,9 @@
 import unittest
 import requests
 import datetime
+from decouple import config
 
-HOST = "https://wcg-apis.herokuapp.com"
+HOST = config('URL')
 DATABASE_URL = HOST + "/citizen"
 URL = HOST + "/registration"
 
@@ -12,14 +13,15 @@ class RegistrationTest(unittest.TestCase):
 
     def setUp(self):
         requests.delete(DATABASE_URL, data=self.citizen_setup("1103703174274", "Sirapop", "Kunjiak", "11 Jan 1993"
-                                                              , "Office worker", "115/22 mock_village, mock_road, "
-                                                                                 "Bangkok 10210"))
+                                                              , "Office worker", "0982942623", "false",
+                                                              "115/22 mock_village, mock_road, "
+                                                              "Bangkok 10210"))
         self.user = self.citizen_setup("1103703174274", "Sirapop", "Kunjiak", "11 Jan 1993"
-                                       , "Office worker", "115/22 mock_village, mock_road, "
-                                                          "Bangkok 10210")
+                                       , "Office worker", "0982942623", "false", "115/22 mock_village, mock_road, "
+                                                                                 "Bangkok 10210")
 
     def citizen_setup(self, citizen_id, firstname, lastname, birthdate,
-                      occupation, address):
+                      occupation, phone_number, is_risk, address):
         """The setup to create citizen"""
         return {
             'citizen_id': citizen_id,
@@ -27,6 +29,8 @@ class RegistrationTest(unittest.TestCase):
             'surname': lastname,
             'birth_date': birthdate,
             'occupation': occupation,
+            'phone_number': phone_number,
+            'is_risk': is_risk,
             'address': address
         }
 
@@ -37,7 +41,7 @@ class RegistrationTest(unittest.TestCase):
     def test_basic_registration(self):
         """Test if the registration success"""
         feedback = requests.post(URL, data=self.user)
-        self.assertEqual(feedback.status_code, 200)
+        self.assertEqual(feedback.status_code, 201)
         self.assertEqual(self.get_response_feedback(feedback), "registration success!")
 
     def test_duplicate_registered(self):
@@ -50,13 +54,15 @@ class RegistrationTest(unittest.TestCase):
     def test_missing_attribute_registration(self):
         """Test when the registration missing a attribute"""
         citizen = self.citizen_setup("1103703174274", "Sirapop", "Kunjiak", "11 Jan 1993"
-                                     , "Office worker", "")
+                                     , "Office worker", "", "false", "115/22 mock_village, mock_road, "
+                                                                               "Bangkok 10210")
         feedback = requests.post(URL, data=citizen)
         self.assertEqual(self.get_response_feedback(feedback), "registration failed: missing some attribute")
 
     def test_wrong_format_birthday(self):
         """Test registration with the wrong birth format"""
         citizen = self.citizen_setup("1103703174275", "Sirapop1", "Kunjiak1", "1993 11 01", "Office worker",
+                                     "0982942623", "false",
                                      "115/22 mock_village, mock_road, "
                                      "Bangkok 10210")
         feedback = requests.post(URL, data=citizen)
@@ -64,12 +70,13 @@ class RegistrationTest(unittest.TestCase):
 
     def test_wrong_citizen_id(self):
         """Test registration with the invalid citizen id"""
-        citizen = self.citizen_setup("110370", "Sirapop1", "Kunjiak1", "11 Feb 1993", "Office worker",
+        citizen = self.citizen_setup("110370", "Sirapop1", "Kunjiak1", "11 Feb 1993", "Office worker", "0982942623",
+                                     "false",
                                      "115/22 mock_village, mock_road, "
                                      "Bangkok 10210")
         citizen1 = self.citizen_setup("ๅ/ตๅ/ค-คๅ/-", "Sirapop2", "Kunjiak2", "1 Dec 1999",
-                                      "Student", "115/263 mocc_village, mocc_road, "
-                                                 "Bangkok 102102")
+                                      "Student", "0982942623", "false", "115/263 mocc_village, mocc_road, "
+                                                                        "Bangkok 102102")
         feedback = requests.post(URL, data=citizen)
         feedback1 = requests.post(URL, data=citizen1)
         self.assertEqual(self.get_response_feedback(feedback), "registration failed: invalid citizen ID")
